@@ -9,6 +9,14 @@ const WebSocket = require("ws");
 const { Deepgram } = require('@deepgram/sdk');
 
 const DG_KEY = process.env.DG_KEY;
+const ACCOUNT_SID = process.env.ACCOUNT_SID;
+const AUTH_TOKEN = process.env.AUTH_TOKEN;
+const FROM_PHONE = process.env.FROM_PHONE;
+const TO_PHONE = process.env.TO_PHONE;
+
+
+const client = require('twilio')(ACCOUNT_SID, AUTH_TOKEN);
+const VoiceResponse = require('twilio').twiml.VoiceResponse;
 
 if (DG_KEY === undefined) {
   throw "You must define DG_KEY in your .env file";
@@ -141,3 +149,44 @@ function setupWebRTCSignaling(socket) {
 const listener = server.listen(process.env.PORT, () =>
   console.log(`Server is running on port ${process.env.PORT}`)
 );
+
+app.post("/call-for-help", async (req, res) => {
+  // return 400 if the request has an empty body or no roomName
+  console.log(req.body);
+  if (!req.body || !req.body.person || !req.body.text) {
+    return res.status(400).send("Must include person and text argument.");
+  }
+  client.calls
+    .create({
+      url: 'http://demo.twilio.com/docs/voice.xml',
+      to: TO_PHONE,
+      from: FROM_PHONE
+    })
+    .then(call => {
+      const voice = new VoiceResponse();
+      voice.say("This is a call on behalf of " + req.body.person);
+      voice.say("The person may be experiencing a crisis. Please call the emergency services.");
+      voice.say("For reference, here is a log of their recent encounter:");
+      voice.say(req.body.text);
+    });
+  return res.status(200).send("OK");
+});
+// const button = document.getElementById("help-button");
+// button.addEventListener("click", () => {
+//   console.log("Help button clicked");
+//   const logs = document.getElementById("localTranscript");
+//   const text = logs.innerText;
+//   client.calls
+//     .create({
+//       url: 'http://demo.twilio.com/docs/voice.xml',
+//       to: TO_PHONE,
+//       from: FROM_PHONE
+//     })
+//     .then(call => {
+//       const response = new VoiceResponse();
+//       response.say("This is a call on behalf of " + "your friend");
+//       response.say("The person may be experiencing a crisis. Please call the emergency services.");
+//       response.say("For reference, here is a log of their recent encounter:");
+//       response.say(text);
+//     });
+// });

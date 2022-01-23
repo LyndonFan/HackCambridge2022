@@ -36,14 +36,24 @@ html {
   top: 5%;
   left: 10%;
   align-self: center;
-  height: fit-content;
+  height: 80%;
   width: 80%;
 }
 
-/* .transcript-text {
-  position: absolute;
-  bottom: 0;
-} */
+.help-button {
+  background-color: #f30d0d;
+  color: white;
+  border-radius: 5px;
+  padding: 6px;
+  font-size: x-large;
+  z-index: 4;
+  box-sizing: border-box;
+  position: relative;
+  top: 5%;
+  left: 10%;
+  width: 80%;
+  height: 15%;
+}
 
 body {
   background-color: #141e29;

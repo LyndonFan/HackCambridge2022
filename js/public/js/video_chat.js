@@ -7,12 +7,15 @@
     // const remoteTranscriptNode = document.querySelector("#remoteTranscript");
     const shareNode = document.querySelector("#urlShare");
     const editOnGlitchNode = document.querySelector("#editOnGlitch");
+    const buttonForHelpNode = document.querySelector("#helpButton");
+
     if (
       // localVideoNode instanceof HTMLVideoElement &&
       // remoteVideoNode instanceof HTMLVideoElement &&
       localTranscriptNode instanceof HTMLElement &&
       // remoteTranscriptNode instanceof HTMLElement &&
       shareNode instanceof HTMLElement &&
+      buttonForHelpNode instanceof HTMLElement &&
       editOnGlitchNode instanceof HTMLAnchorElement
     ) {
       initEditGlitch(editOnGlitchNode);
@@ -33,6 +36,8 @@
         return;
       }
 
+      buttonForHelpNode.addEventListener("click", callForHelp);
+
       // localVideoNode.srcObject = localStream;
 
       initRoom(shareNode, socket);
@@ -42,6 +47,7 @@
         localTranscriptNode,
         // remoteTranscriptNode
       );
+
     } else {
       console.error("one of the HTML nodes was not set up correctly");
       return;
@@ -91,7 +97,6 @@
     };
 
     const localTranscript = new Transcript();
-    // const remoteTranscript = new Transcript();
 
     /** As Deepgram returns real-time transcripts, we display them back in the DOM.
      * @param {string} socketId
@@ -129,9 +134,9 @@
       const json = JSON.parse(jsonFromServer);
       const transcript = json.channel.alternatives[0]
         .transcript;
-      if (transcript !== "") {
-        console.log(json);
-      }
+      // if (transcript !== "") {
+      //   console.log(json);
+      // }
       json.channel.alternatives[0].words.forEach((element) => {
         this.chunks.set(
           element.start, {
@@ -176,13 +181,13 @@
           }
         });
       var i = 0;
-      console.log("entering loop");
+      // console.log("entering loop");
       while (i < divNode.childNodes.length) {
-        console.log(divNode.childNodes[i]);
+        // console.log(divNode.childNodes[i]);
         if (divNode.childNodes[i].className == "interim") {
           var j = i + 1;
           while (j < divNode.childNodes.length && (divNode.childNodes[j].nodeName == "#text" || divNode.childNodes[j].className == "interim")) {
-            console.log(divNode.childNodes[j]);
+            // console.log(divNode.childNodes[j]);
             j++;
           }
           if (j < divNode.childNodes.length && divNode.childNodes[j].className == "final") {
@@ -193,6 +198,7 @@
       return divNode;
     }
   }
+
 
   /**
    * Retrieves the room ID and makes the socket
@@ -249,6 +255,20 @@
     }
     return result;
   }
+
+  const callForHelp = async (event) => {
+    const person = "your uncle Bob";
+    const text = "I need help! I'm in a terrible pain!";
+    const response = await fetch("/call-for-help", {
+      method: "POST",
+      headers: {
+        Accept: "*/*",
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ person: person, text: text }),
+    });
+    console.log(response);
+  };
 
   main();
 })();
