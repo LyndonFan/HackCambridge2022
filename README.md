@@ -2,6 +2,4 @@
 
 
 ## Goal:
-- Dashboard for NFT
-- Education page on NFTs
-- Simulation of NFTs
+- App for detecting domestic abuse with audio recording
