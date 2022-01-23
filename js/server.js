@@ -83,7 +83,8 @@ function setupRealtimeTranscription(socket, room) {
   const deepgram = new Deepgram(DG_KEY);
 
   const dgSocket = deepgram.transcription.live({
-    punctuate: true
+    punctuate: true,
+    diarize: true,
   });
 
   /** We must receive the very first audio packet from the client because

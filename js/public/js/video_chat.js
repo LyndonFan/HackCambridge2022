@@ -100,15 +100,15 @@
     socket.on("transcript-result", (socketId, jsonFromServer) => {
       if (socketId === socket.id) {
         localTranscript.addServerAnswer(jsonFromServer);
-        // localTranscriptNode.innerHTML = "";
-        // localTranscriptNode.appendChild(localTranscript.toHtml());
-        localTranscriptNode.innerHTML += localTranscript.toHtml().innerHTML;
-        // } else {
-        //   remoteTranscript.addServerAnswer(jsonFromServer);
-
-        //   // remoteTranscriptNode.innerHTML = "";
-        //   // remoteTranscriptNode.appendChild(remoteTranscript.toHtml());
-        //   remoteTranscriptNode.innerHTML += remoteTranscript.toHtml().innerHTML;
+        var words = JSON.parse(jsonFromServer).channel.alternatives[0]
+          .transcript
+        if (words.length > 0) {
+          localTranscriptNode.innerHTML = "";
+          localTranscriptNode.appendChild(localTranscript.toHtml());
+        }
+        // if (words.length > 0) {
+        //   localTranscriptNode.innerHTML += localTranscript.toHtml().innerHTML;
+        // }
       }
     });
   }
@@ -120,174 +120,79 @@
    */
   class Transcript {
     constructor() {
-      /** @type {Map<number, {words: string, is_final: boolean}>} */
+      /** @type {Map<number, {word: string, is_final: boolean, speaker: Number}>} */
       this.chunks = new Map();
     }
 
     /** @argument {any} jsonFromServer */
     addServerAnswer(jsonFromServer) {
-      const words = JSON.parse(jsonFromServer).channel.alternatives[0]
+      const json = JSON.parse(jsonFromServer);
+      const transcript = json.channel.alternatives[0]
         .transcript;
-      if (words !== "") {
-        this.chunks.set(jsonFromServer.start, {
-          words,
-          // if "is_final" is true, we will never have future updates for this
-          // audio chunk.
-          is_final: jsonFromServer.is_final,
-        });
-      } else {
-        this.chunks.set(jsonFromServer.start, { words: "", is_final: false });
+      if (transcript !== "") {
+        console.log(json);
       }
+      json.channel.alternatives[0].words.forEach((element) => {
+        this.chunks.set(
+          element.start, {
+          word: element.punctuated_word,
+          is_final: json.is_final,
+          speaker: element.speaker,
+        }
+        )
+      });
+      // this.chunks.set(json.start, {
+      //   words,
+      //   // if "is_final" is true, we will never have future updates for this
+      //   // audio chunk.
+      //   is_final: json.is_final,
+      // });
     }
+
 
     /** @returns {HTMLElement} */
     toHtml() {
       const divNode = document.createElement("div");
+      var prevSpeaker = -1;
       divNode.className = "transcript-text";
       [...this.chunks.entries()]
         .sort((entryA, entryB) => entryA[0] - entryB[0])
         .forEach((entry) => {
-          const spanNode = document.createElement("span");
-          spanNode.innerText = entry[1].words;
-          spanNode.className = entry[1].is_final ? "final" : "interim";
-          divNode.appendChild(spanNode);
-          if (!(entry[1].words.match(/^\s*$/))) {
+          var currSpeaker = entry[1].speaker;
+          if (currSpeaker !== prevSpeaker) {
+            if (prevSpeaker > -1) { divNode.appendChild(document.createElement("br")); }
+            const spanNode = document.createElement("span");
+            spanNode.innerHTML = "Speaker " + (currSpeaker + 1).toString() + ": ";
+            spanNode.className = "transcript-speaker";
+            divNode.appendChild(spanNode);
+            prevSpeaker = currSpeaker;
+          }
+          if (entry[1].word !== "") {
+            const spanNode = document.createElement("span");
+            spanNode.innerHTML = entry[1].word;
+            spanNode.className = entry[1].is_final ? "final" : "interim";
+            divNode.appendChild(spanNode);
             divNode.appendChild(document.createTextNode(" "));
           }
         });
-
+      var i = 0;
+      console.log("entering loop");
+      while (i < divNode.childNodes.length) {
+        console.log(divNode.childNodes[i]);
+        if (divNode.childNodes[i].className == "interim") {
+          var j = i + 1;
+          while (j < divNode.childNodes.length && (divNode.childNodes[j].nodeName == "#text" || divNode.childNodes[j].className == "interim")) {
+            console.log(divNode.childNodes[j]);
+            j++;
+          }
+          if (j < divNode.childNodes.length && divNode.childNodes[j].className == "final") {
+            divNode.removeChild(divNode.childNodes[i]);
+          } else { i++; }
+        } else { i++; }
+      }
       return divNode;
     }
   }
-
-  // /**
-  //  * Sets up the needed subscriptions on the socket to display
-  //  * the remote video in remoteVideoNode.
-  //  *
-  //  * The websocket is NOT used to forward the video stream; it only forwards data to
-  //  * the peer to establish a peer-to-peer connection through which the video and
-  //  * audio streams will be transferred.
-  //  *
-  //  * @param {SocketIOClient.Socket} socket
-  //  * This socket has to be "room initialized" with a call like `initRoom(socket)`.
-  //  * @param {MediaStream} localStream
-  //  * @param {HTMLVideoElement} remoteVideoNode
-  //  */
-  // function setupRemoteVideo(socket, localStream, remoteVideoNode) {
-  //   /**
-  //    * Will be used to track all the peer-to-peer
-  //    * connections we'll have with other clients.
-  //    * @type {Map<string, RTCPeerConnection>}
-  //    */
-  //   const allPeerConnections = new Map();
-
-  //   /**
-  //    * Suppose we have two clients: Alice and Bob. Alice has already connected. She
-  //    * sends her link to Bob.
-  //    *
-  //    * Bob uses the link to join the same room as Alice, so Alice receives a
-  //    * "user-joined" message; `peerSocketId` is  Bob's identifier.
-  //    *
-  //    * Alice will then:
-  //    * - create a new RTC connection
-  //    * - when the connection is ready, send a "video-offer" message to Bob that contains
-  //    *   the necessary data to set up his own RTC connection.
-  //    *
-  //    * @param {string} peerSocketId
-  //    */
-  //   socket.on("user-joined", (peerSocketId) => {
-  //     // This function is executed by Alice.
-  //     const peerConnection = createAndSetupPeerConnection(
-  //       peerSocketId,
-  //       localStream,
-  //       remoteVideoNode,
-  //       socket,
-  //       allPeerConnections
-  //     );
-
-  //     peerConnection.onnegotiationneeded = async () => {
-  //       const sessionDescription = await peerConnection.createOffer();
-  //       await peerConnection.setLocalDescription(sessionDescription);
-  //       socket.emit(
-  //         "video-offer",
-  //         peerSocketId,
-  //         peerConnection.localDescription
-  //       );
-  //     };
-  //   });
-
-  //   /**
-  //    * Bob receives the "video-offer" message. He will:
-  //    * - create his own RTC connection
-  //    * - initialize it with the description he received from Alice
-  //    * - send back a "video-answer" message" to Alice
-  //    *
-  //    * @param {string} peerSocketId
-  //    * @param {RTCSessionDescriptionInit} description
-  //    */
-  //   socket.on("video-offer", async (peerSocketId, description) => {
-  //     // This function is executed by Bob.
-  //     const peerConnection = createAndSetupPeerConnection(
-  //       peerSocketId,
-  //       localStream,
-  //       remoteVideoNode,
-  //       socket,
-  //       allPeerConnections
-  //     );
-
-  //     await peerConnection.setRemoteDescription(description);
-  //     const sessionDescription = await peerConnection.createAnswer();
-  //     await peerConnection.setLocalDescription(sessionDescription);
-
-  //     socket.emit(
-  //       "video-answer",
-  //       peerSocketId,
-  //       peerConnection.localDescription
-  //     );
-  //   });
-
-  //   /**
-  //    * Alice receives the "video-answer" message from Bob.
-  //    * She uses the contained description to finalize the peer
-  //    * connection configuration.
-  //    *
-  //    * @param {string} peerSocketId
-  //    * @param {RTCSessionDescriptionInit} description
-  //    */
-  //   socket.on("video-answer", (peerSocketId, description) => {
-  //     // This function is executed by Alice.
-  //     allPeerConnections.get(peerSocketId).setRemoteDescription(description);
-  //   });
-
-  //   /**
-  //    * An ICE candidate describes what video/audio format can be
-  //    * used. We just must forward these candidates to the corresponding
-  //    * peer connection, which will take care of comparing this
-  //    * candidate with what it can handle.
-  //    *
-  //    * @param {string} peerSocketId
-  //    * @param {RTCIceCandidateInit} candidate
-  //    */
-  //   socket.on("ice-candidate", (peerSocketId, candidate) => {
-  //     // This function is executed by Alice & Bob.
-  //     allPeerConnections
-  //       .get(peerSocketId)
-  //       .addIceCandidate(new RTCIceCandidate(candidate))
-  //       .catch((e) => console.error(e));
-  //   });
-
-  //   /** A client in the root has left, we close the corresponding
-  //    * connection.
-  //    *
-  //    * @param {string} peerSocketId
-  //    */
-  //   socket.on("bye", (peerSocketId) => {
-  //     // This function is executed by Alice or Bob.
-  //     allPeerConnections.get(peerSocketId)?.close();
-  //     allPeerConnections.delete(peerSocketId);
-  //     remoteVideoNode.srcObject = null;
-  //   });
-  // }
 
   /**
    * Retrieves the room ID and makes the socket
@@ -343,56 +248,6 @@
       );
     }
     return result;
-  }
-
-  /**
-   * Create a RTC peer connection and:
-   * - add this connection to `allPeerConnections`
-   * - add the local stream as outgoing tracks to the peer connection
-   *   so the local stream can be sent to the peer
-   * - conversely, bind incoming tracks to remoteVideoNode.srcObject,
-   *   so we can see the peer's stream
-   * - forward ICE candidates to the peer through the socket. This is
-   *   required by the RTC protocol to make both clients agree on what
-   *   video/audio format and quality to use.
-   *
-   * @param {string} peerSocketId
-   * @param {MediaStream} localStream
-  //  * @param {HTMLVideoElement} remoteVideoNode
-   * @param {SocketIOClient.Socket} socket
-   * @param {Map<string, RTCPeerConnection>} allPeerConnections
-   * @returns {RTCPeerConnection} */
-  function createAndSetupPeerConnection(
-    peerSocketId,
-    localStream,
-    // remoteVideoNode,
-    socket,
-    allPeerConnections
-  ) {
-    const peerConnection = new RTCPeerConnection({
-      iceServers: [
-        {
-          urls: ["stun:stun.l.google.com:19302"],
-        },
-      ],
-    });
-    allPeerConnections.set(peerSocketId, peerConnection);
-
-    localStream
-      .getTracks()
-      .forEach((track) => peerConnection.addTrack(track, localStream));
-
-    peerConnection.onicecandidate = (event) => {
-      if (event.candidate) {
-        socket.emit("ice-candidate", peerSocketId, event.candidate);
-      }
-    };
-
-    // peerConnection.ontrack = (event) => {
-    //   remoteVideoNode.srcObject = event.streams[0];
-    // };
-
-    return peerConnection;
   }
 
   main();

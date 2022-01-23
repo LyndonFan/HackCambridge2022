@@ -2,16 +2,17 @@
 <html lang="en">
 
 <head>
-  <title>Video Chat</title>
+  <title>Rolling Audio Transcript</title>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-  <meta name="description" content="Deepgram Video Chat" />
+  <meta name="description" content="Deepgram Audio Transcript" />
   <meta name="author" content="Deepgram" />
   <link href="/css/main.css" rel="stylesheet" />
 </head>
 
 <body>
-  <div id="share">
+  <!-- somehow if you delete the block below it won't work -->
+  <div id="share" style="display:none;">
     <p><b>Invite someone to join:</b></p>
     <p id="urlShare"></p>
     <p><b>Explore the code:</b></p>
@@ -21,7 +22,6 @@
     </div>
   </div>
   <div class="transcript" id="localTranscript"></div>
-  <video id="localVideo" playsinline autoplay muted></video>
   <script src="/socket.io/socket.io.js"></script>
   <script src="/js/recorder.min.js"></script>
   <script src="/js/video_chat.js"></script>
