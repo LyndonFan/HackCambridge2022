@@ -7,7 +7,6 @@
     // const remoteTranscriptNode = document.querySelector("#remoteTranscript");
     const shareNode = document.querySelector("#urlShare");
     const editOnGlitchNode = document.querySelector("#editOnGlitch");
-    const buttonForHelpNode = document.querySelector("#helpButton");
 
     if (
       // localVideoNode instanceof HTMLVideoElement &&
@@ -15,7 +14,6 @@
       localTranscriptNode instanceof HTMLElement &&
       // remoteTranscriptNode instanceof HTMLElement &&
       shareNode instanceof HTMLElement &&
-      buttonForHelpNode instanceof HTMLElement &&
       editOnGlitchNode instanceof HTMLAnchorElement
     ) {
       initEditGlitch(editOnGlitchNode);
@@ -35,8 +33,6 @@
         );
         return;
       }
-
-      buttonForHelpNode.addEventListener("click", callForHelp);
 
       // localVideoNode.srcObject = localStream;
 
@@ -255,20 +251,6 @@
     }
     return result;
   }
-
-  const callForHelp = async (event) => {
-    const person = "your uncle Bob";
-    const text = "I need help! I'm in a terrible pain!";
-    const response = await fetch("/call-for-help", {
-      method: "POST",
-      headers: {
-        Accept: "*/*",
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({ person: person, text: text }),
-    });
-    console.log(response);
-  };
 
   main();
 })();
