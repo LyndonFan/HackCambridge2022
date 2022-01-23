@@ -133,3 +133,5 @@ dmypy.json
 # js
 node_modules/
 .DS_Store
+
+twilioCred.js
