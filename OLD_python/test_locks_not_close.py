@@ -5,7 +5,7 @@ import wave
 from deepgram import Deepgram
 from waiting import wait
 from multiprocessing import Process, Lock
-import os
+import sys
 
 with open(".env", "r") as f:
     DEEPGRAM_API_KEY = f.read().strip().split("=")[1]
@@ -49,10 +49,13 @@ for i in range(N_PROCESSES):
 
 dg_client = Deepgram(DEEPGRAM_API_KEY)
 
+CHUNK_SIZE_BYTES = 8192
+CHUNK_RATE_SEC = 0.001
+
 
 async def get_transcript(task_id=0):
     PATH_TO_FILE = f"output{task_id}.wav"
-    repsonses = []
+    responses = []
     # Initializes the Deepgram SDK
     # Creates a websocket connection to Deepgram
     try:
@@ -66,42 +69,50 @@ async def get_transcript(task_id=0):
         # Open the file
         with open(PATH_TO_FILE, 'rb') as audio:
             # Chunk up the audio to send
-            CHUNK_SIZE_BYTES = 8192
-            CHUNK_RATE_SEC = 0.001
             chunk = audio.read(CHUNK_SIZE_BYTES)
             print(type(chunk))
+            count_chunks = 0
+            assert connection.open
             while chunk:
                 connection.send(chunk)
+                print(f"Sent chunk {count_chunks}")
+                sys.stdout.flush()
                 await asyncio.sleep(CHUNK_RATE_SEC)
                 chunk = audio.read(CHUNK_SIZE_BYTES)
+                count_chunks += 1
         # Indicate that we've finished sending data
         await connection.finish()
+
+    def handle(r):
+        print(f"Got response {len(responses)}")
+        sys.stdout.flush()
+        responses.append(r)
 
     # Listen for the connection to close
     socket.register_handler(socket.event.CLOSE, lambda c: print(
         f'Connection closed with code {c}.'))
     # Print incoming transcription objects
     socket.register_handler(
-        socket.event.TRANSCRIPT_RECEIVED, lambda r: repsonses.append(r))
+        socket.event.TRANSCRIPT_RECEIVED, handle)
 
     # Send the audio to the socket
     await process_audio(socket)
 
     del socket
-    return repsonses
+    return responses
 
 
 def task(l, fl, task_id=0):
     l.acquire()
-    print("Lock L acquired")
+    print(f"Lock L acquired for recording {task_id}")
     fl[task_id].acquire()
-    print(f"FLock {task_id} acquired")
+    print(f"FLock {task_id} acquired for recording")
     print(f"Task {task_id} recording")
     record_audio()
     fl[task_id].release()
-    print(f"FLock {task_id} released")
+    print(f"FLock {task_id} released from recording")
     l.release()
-    print("Lock L released")
+    print(f"Lock L released from recording {task_id}")
     # print(f"Task {task_id} sending transcript")
     # response = asyncio.run(get_transcript(task_id))
     # response = response[:-1]
@@ -123,17 +134,17 @@ def transcript_task(l, fl, current_id=0, initial=True):
             await asyncio.sleep(seconds*1.5)
         asyncio.run(holder())
     fl[current_id].acquire()
-    print(f"FLock {current_id} acquired")
+    print(f"FLock {current_id} acquired for transcript")
     print(f"Sending transcript for {current_id}")
     response = asyncio.run(get_transcript(current_id))
+    fl[current_id].release()
     response = response[:-1]
     response.sort(key=lambda dct: (dct['start'], dct['duration']))
     for r in response:
         words = r['channel']['alternatives'][0]['words']
         if len(words) > 0:
             print(f'{r["start"]:.3f} - {r["start"] + r["duration"]:.3f}: {words}')
-    fl[current_id].release()
-    print(f"FLock {current_id} released")
+    print(f"FLock {current_id} released from transcript")
     transcript_task(l, fl, (current_id+1) % N_PROCESSES, False)
 
 
